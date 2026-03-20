@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 
 class UserData(Base):
-    __tablename__ = "USER_DATA"
+    __tablename__ = "user_data"
 
     user_id: Mapped[str] = mapped_column(String, primary_key=True)
     nick_name: Mapped[str | None] = mapped_column(Text)
@@ -30,7 +30,7 @@ class UserData(Base):
 
 
 class GroupData(Base):
-    __tablename__ = "GROUP_DATA"
+    __tablename__ = "group_data"
 
     group_id: Mapped[str] = mapped_column(String, primary_key=True)
     group_name: Mapped[str | None] = mapped_column(Text)
@@ -52,7 +52,7 @@ class MessageData(Base):
 
 
 class EventData(Base):
-    __tablename__ = "EVENT_DATA"
+    __tablename__ = "event_data"
 
     event_id: Mapped[str] = mapped_column(String, primary_key=True)
     event_message: Mapped[str | None] = mapped_column(Text)

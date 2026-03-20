@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 
@@ -13,7 +13,6 @@ from neobot_adapter.model.response import (
 )
 from neobot_adapter.model.message import PrivateMessage, GroupMessage
 
-from neobot_app.database.sqlite import Database
 from neobot_app.message.queue import MessageQueue
 
 logger = logging.getLogger(__name__)
@@ -39,12 +38,14 @@ class ChatStreamManager:
     def __init__(
         self,
         adapter: OneBotAdapter,
+        uow_factory: Callable,
         config: Optional[ChatStreamConfig] = None,
         group_message_queue: Optional[MessageQueue] = None,
         friend_message_queue: Optional[MessageQueue] = None,
     ):
         """初始化聊天流管理器"""
         self.adapter = adapter
+        self._uow_factory = uow_factory
         self.config = config or ChatStreamConfig()
         self._group_queue = group_message_queue
         self._friend_queue = friend_message_queue
@@ -94,14 +95,13 @@ class ChatStreamManager:
             # 将群信息存入数据库
             if groups:
                 logger.info("开始将群信息存入数据库...")
-                from neobot_app.database.sqlite import get_db
-                db = get_db()
-
-                for group in groups:
-                    try:
-                        self._insert_or_update_group_to_db(db, group)
-                    except Exception as e:
-                        logger.error(f"存储群 {group.group_id} 信息时出错: {e}")
+                async with self._uow_factory() as uow:
+                    for group in groups:
+                        try:
+                            await self._insert_or_update_group_to_db(uow, group)
+                        except Exception as e:
+                            logger.error(f"存储群 {group.group_id} 信息时出错: {e}")
+                    await uow.commit()
                 logger.info(f"群信息存储完成，共处理 {len(groups)} 个群")
 
             # 并发处理好友历史消息
@@ -284,15 +284,13 @@ class ChatStreamManager:
 
     async def _update_missing_users(self, user_ids: Set[str]) -> None:
         """更新缺失的用户信息到数据库"""
-        from neobot_app.database.sqlite import get_db
-        db = get_db()
-
         missing_users = []
 
         # 检查哪些用户不在数据库中
-        for user_id in user_ids:
-            if not self._user_exists_in_db(db, user_id):
-                missing_users.append(user_id)
+        async with self._uow_factory() as uow:
+            for user_id in user_ids:
+                if not await self._user_exists_in_db(uow, user_id):
+                    missing_users.append(user_id)
 
         if not missing_users:
             logger.info("所有用户都已存在于数据库中")
@@ -301,7 +299,7 @@ class ChatStreamManager:
         logger.info(f"发现 {len(missing_users)} 个缺失的用户，开始获取信息...")
 
         # 并发获取用户信息
-        tasks = [self._get_stranger_info_and_store(user_id, db) for user_id in missing_users]
+        tasks = [self._get_stranger_info_and_store(user_id) for user_id in missing_users]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # 检查结果
@@ -314,73 +312,46 @@ class ChatStreamManager:
 
         logger.info(f"用户信息更新完成，成功获取 {success_count}/{len(missing_users)} 个用户信息")
 
-    def _user_exists_in_db(self, db: Database, user_id: str) -> bool:
-        """检查用户是否存在于 USER_DATA 表中"""
+    async def _user_exists_in_db(self, uow, user_id: str) -> bool:
+        """检查用户是否存在于 user_data 表中"""
         try:
-            cursor = db.execute("SELECT 1 FROM USER_DATA WHERE user_id = ? LIMIT 1", (user_id,))
-            return cursor.fetchone() is not None
+            return await uow.profiles.user_exists(user_id)
         except Exception as e:
             logger.error(f"检查用户 {user_id} 是否存在时出错: {e}")
             return False
 
-    def _group_exists_in_db(self, db: Database, group_id: str) -> bool:
-        """检查群是否存在于 GROUP_DATA 表中"""
+    async def _group_exists_in_db(self, uow, group_id: str) -> bool:
+        """检查群是否存在于 group_data 表中"""
         try:
-            cursor = db.execute("SELECT 1 FROM GROUP_DATA WHERE group_id = ? LIMIT 1", (group_id,))
-            return cursor.fetchone() is not None
+            return await uow.profiles.group_exists(group_id)
         except Exception as e:
             logger.error(f"检查群 {group_id} 是否存在时出错: {e}")
             return False
 
-    def _insert_user_to_db(self, db: Database, user_id: str, user_info: Dict[str, Any]) -> None:
-        """插入用户信息到 USER_DATA 表"""
+    async def _insert_user_to_db(self, uow, user_id: str, user_info: Dict[str, Any]) -> None:
+        """插入用户信息到 user_data 表"""
         try:
-            db.execute(
-                """INSERT OR IGNORE INTO USER_DATA
-                   (user_id, nick_name, relation_ship, profile, birthday, sex, city, country, labs, remark, age, long_nick)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    user_id,
-                    user_info.get("nick_name", ""),
-                    user_info.get("relation_ship", ""),
-                    user_info.get("profile", ""),
-                    user_info.get("birthday", ""),
-                    user_info.get("sex", ""),
-                    user_info.get("city", ""),
-                    user_info.get("country", ""),
-                    user_info.get("labs", ""),
-                    user_info.get("remark", ""),
-                    user_info.get("age", 0),
-                    user_info.get("long_nick", ""),
-                ),
-            )
-            db.commit()
+            await uow.profiles.upsert_user(user_id, **user_info)
+            await uow.commit()
             logger.info(f"用户 {user_id} 已插入数据库")
         except Exception as e:
             logger.error(f"插入用户 {user_id} 到数据库时出错: {e}")
-            db.rollback()
+            await uow.rollback()
 
-    def _insert_or_update_group_to_db(self, db: Database, group: GroupData) -> None:
-        """插入或更新群信息到 GROUP_DATA 表"""
+    async def _insert_or_update_group_to_db(self, uow, group: GroupData) -> None:
+        """插入或更新群信息到 group_data 表"""
         try:
-            db.execute(
-                """INSERT OR REPLACE INTO GROUP_DATA
-                   (group_id, group_name, profile, is_quite)
-                   VALUES (?, ?, ?, ?)""",
-                (
-                    str(group.group_id) if group.group_id else "",
-                    group.group_name or "",
-                    group.group_memo or "",
-                    0,
-                ),
+            await uow.profiles.upsert_group(
+                group_id=str(group.group_id) if group.group_id else "",
+                group_name=group.group_name or "",
+                profile=group.group_memo or "",
+                is_quite=False,
             )
-            db.commit()
             logger.debug(f"群 {group.group_id} 信息已存入数据库")
         except Exception as e:
             logger.error(f"插入或更新群 {group.group_id} 到数据库时出错: {e}")
-            db.rollback()
 
-    async def _get_stranger_info_and_store(self, user_id: str, db: Database) -> None:
+    async def _get_stranger_info_and_store(self, user_id: str) -> None:
         """获取陌生人信息并存储到数据库"""
         try:
             response = await self._retry_api_call(
@@ -404,7 +375,8 @@ class ChatStreamManager:
                 if response.data.birthday_year and response.data.birthday_month and response.data.birthday_day:
                     user_info["birthday"] = f"{response.data.birthday_year}-{response.data.birthday_month}-{response.data.birthday_day}"
 
-                self._insert_user_to_db(db, user_id, user_info)
+                async with self._uow_factory() as uow:
+                    await self._insert_user_to_db(uow, user_id, user_info)
             else:
                 logger.warning(f"获取用户 {user_id} 信息返回空数据")
         except Exception as e:

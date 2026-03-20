@@ -10,7 +10,7 @@ from neobot_contracts.ports.clock import SystemClock
 from neobot_app.config.loader.env import load_env
 from neobot_app.config.loader.manager import Config
 from neobot_app.config.schemas.bot import BotConfig as BotConfigSchema
-from neobot_app.core import CONFIG_FILE
+from neobot_app.core import CONFIG_FILE, DATA_DIR
 from neobot_app.database.chatstream import ChatStreamManager
 from neobot_app.message.queue import MessageQueue
 from neobot_app.observability.logging import LoguruLoggerFactory
@@ -21,6 +21,9 @@ from neobot_app.runtime.history_warmup import HistoryWarmupService
 
 from neobot_memory import MemoryService
 from neobot_memory.defaults import InMemoryMemoryRepository
+from neobot_storage import run_migrations
+
+from neobot_app.assembly.storage import build_storage
 
 
 def _load_config() -> BotConfigSchema:
@@ -33,6 +36,13 @@ def create_application() -> NeoBotApplication[OneBotAdapter]:
     clock = SystemClock()
 
     config = _load_config()
+
+    # 自动迁移数据库
+    db_url = f"sqlite+aiosqlite:///{DATA_DIR / 'neobot.db'}"
+    run_migrations(db_url)
+
+    # Storage (async engine + UoW factory)
+    _engine, uow_factory = build_storage(db_url)
 
     # 消息队列
     group_message_queue = MessageQueue(max_size=config.chat.max_group_chat_observations)
@@ -54,6 +64,7 @@ def create_application() -> NeoBotApplication[OneBotAdapter]:
     # 聊天流（历史消息预热，兼容旧逻辑）
     chat_stream = ChatStreamManager(
         adapter=adapter,
+        uow_factory=uow_factory,
         group_message_queue=group_message_queue,
         friend_message_queue=friend_message_queue,
     )

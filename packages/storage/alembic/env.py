@@ -47,4 +47,12 @@ async def run_migrations_online() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
+    try:
+        asyncio.get_running_loop()
+        # 已在 event loop 中（如 app 启动时调用），用新线程跑
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            pool.submit(asyncio.run, run_migrations_online()).result()
+    except RuntimeError:
+        # 没有 event loop（CLI 直接调用）
+        asyncio.run(run_migrations_online())

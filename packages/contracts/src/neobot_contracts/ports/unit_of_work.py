@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from neobot_contracts.ports.repository import MemoryRepository, MessageRepository
+from neobot_contracts.ports.repository import MemoryRepository, MessageRepository, ProfileRepository
 
 
 @runtime_checkable
@@ -13,6 +13,7 @@ class UnitOfWork(Protocol):
 
     messages: MessageRepository
     memories: MemoryRepository
+    profiles: ProfileRepository
 
     async def commit(self) -> None: ...
     async def rollback(self) -> None: ...

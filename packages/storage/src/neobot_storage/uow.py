@@ -8,6 +8,7 @@ from neobot_contracts.ports.unit_of_work import UnitOfWork
 
 from neobot_storage.repositories.memory import SqlAlchemyMemoryRepository
 from neobot_storage.repositories.message import SqlAlchemyMessageRepository
+from neobot_storage.repositories.profile import SqlAlchemyProfileRepository
 
 
 class SqlAlchemyUnitOfWork:
@@ -20,6 +21,7 @@ class SqlAlchemyUnitOfWork:
         self._session: AsyncSession = self._factory()
         self.messages = SqlAlchemyMessageRepository(self._session)
         self.memories = SqlAlchemyMemoryRepository(self._session)
+        self.profiles = SqlAlchemyProfileRepository(self._session)
         return self
 
     async def __aexit__(self, *exc: object) -> None:

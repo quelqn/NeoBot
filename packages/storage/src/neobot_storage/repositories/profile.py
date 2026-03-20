@@ -21,3 +21,15 @@ class SqlAlchemyProfileRepository:
         stmt = insert(GroupData).values(group_id=group_id, **fields)
         stmt = stmt.on_conflict_do_update(index_elements=["group_id"], set_=fields)
         await self._session.execute(stmt)
+
+    async def user_exists(self, user_id: str) -> bool:
+        from sqlalchemy import select
+        stmt = select(UserData.user_id).where(UserData.user_id == user_id).limit(1)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def group_exists(self, group_id: str) -> bool:
+        from sqlalchemy import select
+        stmt = select(GroupData.group_id).where(GroupData.group_id == group_id).limit(1)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none() is not None
