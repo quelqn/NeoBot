@@ -14,7 +14,7 @@ class Subscription(Protocol):
 
 @runtime_checkable
 class EventSource(Protocol):
-    """事件源协议，适配器实现此接口以提供事件流"""
+    """事件源接口，适配器实现此接口以提供事件流"""
 
     async def start(self) -> None: ...
     async def stop(self) -> None: ...

@@ -7,7 +7,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class Logger(Protocol):
-    """日志记录器协议"""
+    """日志记录器接口"""
 
     def bind(self, **ctx: Any) -> Logger: ...
     def debug(self, msg: str, **kw: Any) -> None: ...

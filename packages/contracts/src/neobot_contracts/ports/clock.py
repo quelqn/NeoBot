@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class Clock(Protocol):
-    """时钟协议，便于测试时替换"""
+    """时钟接口，便于测试时替换"""
 
     def now(self) -> datetime: ...
 

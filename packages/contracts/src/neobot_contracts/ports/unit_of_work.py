@@ -9,7 +9,7 @@ from neobot_contracts.ports.repository import MemoryRepository, MessageRepositor
 
 @runtime_checkable
 class UnitOfWork(Protocol):
-    """工作单元协议，管理一次事务中的多个 Repository"""
+    """工作单元接口，管理一次事务中的多个 Repository"""
 
     messages: MessageRepository
     memories: MemoryRepository
@@ -24,6 +24,6 @@ class UnitOfWork(Protocol):
 
 @runtime_checkable
 class UnitOfWorkFactory(Protocol):
-    """工作单元工厂协议"""
+    """工作单元工厂接口"""
 
     def __call__(self) -> UnitOfWork: ...

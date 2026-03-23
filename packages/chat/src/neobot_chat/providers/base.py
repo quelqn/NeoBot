@@ -11,7 +11,7 @@ from neobot_chat.schema.types import ChatChunk, Message, ToolDefinition
 
 
 class Provider(Protocol):
-    """LLM Provider 协议：统一的 chat / stream / close 接口"""
+    """LLM Provider 接口：统一的 chat / stream / close 方法"""
 
     async def chat(
         self, messages: list[Message], tools: list[ToolDefinition] | None = None

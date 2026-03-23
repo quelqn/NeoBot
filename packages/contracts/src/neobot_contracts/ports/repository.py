@@ -9,7 +9,7 @@ from neobot_contracts.models import ConversationRef, IncomingMessage, MemoryReco
 
 @runtime_checkable
 class MemoryRepository(Protocol):
-    """记忆存储协议"""
+    """记忆存储接口"""
 
     async def save(self, record: MemoryRecord) -> None: ...
     async def search(
@@ -19,7 +19,7 @@ class MemoryRepository(Protocol):
 
 @runtime_checkable
 class MessageRepository(Protocol):
-    """消息存储协议"""
+    """消息存储接口"""
 
     async def save_message(self, message: IncomingMessage) -> None: ...
     async def get_history(
@@ -29,7 +29,7 @@ class MessageRepository(Protocol):
 
 @runtime_checkable
 class ProfileRepository(Protocol):
-    """用户/群资料存储协议"""
+    """用户/群资料存储接口"""
 
     async def upsert_user(self, user_id: str, **fields) -> None: ...
     async def upsert_group(self, group_id: str, **fields) -> None: ...

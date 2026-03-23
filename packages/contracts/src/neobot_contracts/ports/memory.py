@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class ArchiveStorage(Protocol):
-    """档案式记忆存储协议"""
+    """档案式记忆存储接口"""
 
     async def create(self, user_id: str, key: str, value: str, tags: list[str]) -> int: ...
 
@@ -21,7 +21,7 @@ class ArchiveStorage(Protocol):
 
 @runtime_checkable
 class ArchiveQuery(Protocol):
-    """档案式记忆查询协议"""
+    """档案式记忆查询接口"""
 
     async def query_by_user(
         self,

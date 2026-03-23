@@ -17,7 +17,7 @@ class PluginState(Enum):
 
 @runtime_checkable
 class Plugin(Protocol):
-    """插件协议"""
+    """插件接口"""
 
     @property
     def name(self) -> str: ...
@@ -34,7 +34,7 @@ class Plugin(Protocol):
 
 @runtime_checkable
 class PluginLoader(Protocol):
-    """插件加载器协议"""
+    """插件加载器接口"""
 
     def scan_plugins(self, path: str) -> list[str]: ...
 
@@ -43,7 +43,7 @@ class PluginLoader(Protocol):
 
 @runtime_checkable
 class PluginManager(Protocol):
-    """插件管理器协议"""
+    """插件管理器接口"""
 
     def register(self, plugin: Plugin) -> None: ...
 

@@ -10,7 +10,7 @@ from neobot_contracts.ports.logging import Logger
 
 
 class LoguruLoggerAdapter:
-    """将 loguru.Logger 适配为 neobot_contracts.Logger 协议"""
+    """将 loguru.Logger 适配为 neobot_contracts.Logger 接口"""
 
     def __init__(self, inner: loguru.Logger) -> None:  # type: ignore[type-arg]
         self._inner = inner

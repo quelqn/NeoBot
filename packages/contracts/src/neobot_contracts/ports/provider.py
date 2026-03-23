@@ -8,7 +8,7 @@ from typing import Any, Optional, Protocol, runtime_checkable
 
 @runtime_checkable
 class Provider(Protocol):
-    """LLM Provider 协议，与 neobot_chat.providers.base.Provider 对齐"""
+    """LLM Provider 接口，与 neobot_chat.providers.base.Provider 对齐"""
 
     async def chat(
         self,
